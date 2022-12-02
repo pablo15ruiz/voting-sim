@@ -2,148 +2,129 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
+
 class VotingMethod(ABC):
 
-    def __init__(self, behaviour):
+    def __init__(self, behaviour, p=1):
         behaviour_method = f'compute_ballots_{behaviour}'
-        if behaviour_method not in dir(self):
-            raise NameError(f'Method ({self} {behaviour}) not implemented')
+        assert behaviour_method in dir(self)
+        assert 0 < p <= 1
 
         self.behaviour = behaviour
         self.compute_ballots = getattr(self, behaviour_method)
+        self.p = p
 
     @abstractmethod
     def compute_winner(self, ballots):
         pass
 
+    @abstractmethod
+    def compute_ballots_honest(self, util, poll=None):
+        pass
+
+    def split_util(func):
+        def wrapper(self, util, poll):
+            if self.p == 1:
+                ballots = func(self, util, poll)
+            else:
+                i = int(self.p*util.shape[0])
+                strat_util, honest_util = util[:i], util[i:]
+                honest_ballots = self.compute_ballots_honest(honest_util)
+                strat_ballots = func(self, strat_util, poll)
+                ballots = np.append(strat_ballots, honest_ballots)
+            return ballots
+        return wrapper
+
     def __repr__(self):
-        return self.__class__.__name__
+        return f'{self.__class__.__name__} {self.behaviour} {int(100*self.p)}%'
 
-class FPTP(VotingMethod):
 
-    def __init__(self, behaviour):
-        super().__init__(behaviour)
+class PluralityVotingMethod(VotingMethod):
+
+    def __init__(self, behaviour, p):
+        super().__init__(behaviour, p)
+
+    def compute_ballots_honest(self, util, poll=None):
+        return util.argmax(axis=1)
+
+    @VotingMethod.split_util
+    def compute_ballots_strategic(self, util, poll):
+        fr = poll.argsort()[-2:]
+        return fr[util[:, fr].argmax(axis=1)]
+
+    @VotingMethod.split_util
+    def compute_ballots_strategic1s(self, util, poll):
+        fr = poll.argsort()[-2:]
+        strat_ballots = fr[util[:, fr].argmax(axis=1)]
+        idx = strat_ballots != fr[0]
+        strat_ballots[idx] = self.compute_ballots_honest(util[idx])
+        return strat_ballots
+
+class OrdinalVotingMethod(VotingMethod):
+
+    def __init__(self, behaviour, p):
+        super().__init__(behaviour, p)
+
+    def compute_ballots_honest(self, util, poll=None):
+        return util.argmax(axis=1)
+
+    def compute_ballots_strategic(self, util, poll):
+        pass
+
+    def compute_ballots_strategic_1s(self, util, poll):
+        pass
+
+class CardinalVotingMethod(VotingMethod):
+
+    def __init__(self, behaviour, p):
+        super().__init__(behaviour, p)
+
+    def compute_ballots_honest(self, util, poll=None):
+        return util.argmax(axis=1)
+
+    def compute_ballots_strategic(self, util, poll):
+        pass
+
+    def compute_ballots_strategic_1s(self, util, poll):
+        pass
+
+
+class FPTP(PluralityVotingMethod):
+
+    def __init__(self, behaviour, p):
+        super().__init__(behaviour, p)
 
     def compute_winner(self, ballots):
         return np.bincount(ballots).argmax()
 
-    def compute_ballots_honest(self, utilities, poll=None):
-        return utilities.argmax(axis=1)
+class Borda(OrdinalVotingMethod):
 
-    def compute_ballots_strategy(self, utilities, poll=None):
-        front_runners = np.argsort(poll)[-2:]
-        return front_runners[utilities[:, front_runners].argmax(axis=1)]
-
-class Borda(VotingMethod):
-
-    def __init__(self, behaviour):
-        super().__init__(behaviour)
+    def __init__(self, behaviour, p):
+        super().__init__(behaviour, p)
 
     def compute_winner(self, ballots):
-        return ballots.sum(axis=0).argmin()
+        pass
 
-    def compute_ballots_honest(self, utilities, poll=None):
-        return np.flip(utilities.argsort(), axis=1).argsort()
+class IRV(OrdinalVotingMethod):
 
-class Condorcet(VotingMethod):
-
-    def __init__(self, behaviour):
-        super().__init__(behaviour)
+    def __init__(self, behaviour, p):
+        super().__init__(behaviour, p)
 
     def compute_winner(self, ballots):
-        n_voters = len(ballots)
-        matrix = (ballots[:, None] > ballots[:, :, None]).astype(int).sum(axis=0)
-        count = (matrix >= int(n_voters/2)).sum(axis=1)
-        winner = np.random.choice(range(len(count)))
-        if count.max() == len(count) - 1:
-            winner = count.argmax()
-        return winner
+        pass
 
-    def compute_ballots_honest(self, utilities, poll=None):
-        return np.flip(utilities.argsort(), axis=1).argsort()
+class Score(CardinalVotingMethod):
 
-class IRV(VotingMethod):
-
-    def __init__(self, behaviour):
-        super().__init__(behaviour)
+    def __init__(self, behaviour, p):
+        super().__init__(behaviour, p)
 
     def compute_winner(self, ballots):
-        candidates = [*range(ballots.shape[1])]
-        while len(candidates) > 1:
-            worst = np.bincount(
-                ballots.argmin(axis=1),
-                minlength=len(candidates)
-            ).argmin()
-            candidates.pop(worst)
-            ballots = np.delete(ballots, worst, 1)
-        return candidates[0]
+        pass
 
-    def compute_ballots_honest(self, utilities, poll=None):
-        return np.flip(utilities.argsort(), axis=1).argsort()
+class STAR(CardinalVotingMethod):
 
-class Approval(VotingMethod):
-
-    def __init__(self, behaviour):
-        super().__init__(behaviour)
+    def __init__(self, behaviour, p):
+        super().__init__(behaviour, p)
 
     def compute_winner(self, ballots):
-        return ballots.sum(axis=0).argmax()
-
-    def compute_ballots_honest(self, utilities, poll=None):
-        tolerance = (utilities.max(axis=1) + utilities.min(axis=1)) / 2
-        return (utilities > tolerance[:, None]).astype(int)
-
-class Score(VotingMethod):
-
-    def __init__(self, behaviour, max_score=5):
-        super().__init__(behaviour)
-        self.max_score = max_score
-
-    def compute_winner(self, ballots):
-        return ballots.sum(axis=0).argmax()
-
-    def compute_ballots_honest(self, utilities, poll=None):
-        ballots = utilities - utilities.min(axis=1)[:, None]
-        ballots = ballots / ballots.max(axis=1)[:, None]
-        ballots = (ballots*(self.max_score + 1)).astype(int)
-        ballots[ballots == (self.max_score + 1)] -= 1
-        return ballots
-
-    def compute_ballots_strategy(self, utilities, poll=None):
-        front_runners = np.argsort(poll)[-2:]
-        idx = front_runners[utilities[:, front_runners].argmax(axis=1)]
-        utilities[range(len(utilities)), idx] = 1
-        idx = front_runners[utilities[:, front_runners].argmin(axis=1)]
-        utilities[range(len(utilities)), idx] = 0
-        return self.compute_ballots_honest(utilities)
-
-    def __repr__(self):
-        return f'{self.__class__.__name__}{self.max_score}'
-
-
-class STAR(VotingMethod):
-
-    def __init__(self, behaviour, max_score=5):
-        super().__init__(behaviour)
-        self.max_score = max_score
-
-    def compute_winner(self, ballots):
-        return ballots.sum(axis=0).argmax()
-
-    def compute_ballots_honest(self, utilities, poll=None):
-        ballots = utilities - utilities.min(axis=1)[:, None]
-        ballots = ballots / ballots.max(axis=1)[:, None]
-        ballots = (ballots*(self.max_score + 1)).astype(int)
-        ballots[ballots == (self.max_score + 1)] -= 1
-        return ballots
-
-    def compute_ballots_strategy(self, utilities, poll=None):
-        front_runners = np.argsort(poll)[-2:]
-        idx = front_runners[utilities[:, front_runners].argmax(axis=1)]
-        utilities[range(len(utilities)), idx] = 1
-        idx = front_runners[utilities[:, front_runners].argmin(axis=1)]
-        utilities[range(len(utilities)), idx] = 0
-        return self.compute_ballots_honest(utilities)
-
-    def __repr__(self):
-        return f'{self.__class__.__name__}{self.max_score}'
+        pass
