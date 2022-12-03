@@ -6,30 +6,45 @@ import numpy as np
 
 np.random.seed(1)
 
-n_vot = 100
-n_cand = 4
-n_iter = 10000
+n_vot = 1000
+n_cand = 6
+n_iter = 1000
 
+voter_model = ClusteredSpatialModel()
+# voter_model = ImpartialCulture()
 methods = [
     FPTP('honest'),
-    FPTP('strategy'),
+    FPTP('strategic'),
+    FPTP('strategic', p=0.5),
+    FPTP('strategic1s'),
+    FPTP('strategic1s', p=0.5),
     Borda('honest'),
-    Condorcet('honest'),
-    IRV('honest'),
-    Approval('honest'),
-    Score('honest', max_score=5),
-    Score('strategy', max_score=5),
-    Score('honest', max_score=50),
-    Score('honest', max_score=3),
+    Borda('strategic'),
+    Borda('strategic', p=0.5),
+    Borda('strategic1s'),
+    Borda('strategic1s', p=0.5),
+    # IRV('honest'),
+    # IRV('strategic'),
+    # IRV('strategic', p=0.5),
+    # IRV('strategic1s'),
+    # IRV('strategic1s', p=0.5),
+    # Score('honest', max_score=1),
+    # Score('strategic', max_score=1),
+    # Score('strategic', max_score=1, p=0.5),
+    # Score('strategic1s', max_score=1),
+    # Score('strategic1s', max_score=1, p=0.5),
+    # Score('honest'),
+    # Score('strategic'),
+    # Score('strategic', p=0.5),
+    # Score('strategic1s'),
+    # Score('strategic1s', p=0.5),
+    # STAR('honest'),
+    # STAR('strategic'),
+    # STAR('strategic', p=0.5),
+    # STAR('strategic1s'),
+    # STAR('strategic1s', p=0.5)
 ]
-voter_model = ImpartialCulture()
+
 sim = Simulation(n_vot, n_cand, n_iter, methods, voter_model)
 sim.simulate()
-sim.compute_metrics()
-sim.show_results()
-
-# method = Score('strategy', max_score=5)
-# utilities = ImpartialCulture().generate_utilities(n_vot, n_cand)
-# elec = Election(n_vot, n_cand, utilities, poll=True)
-# winner = elec.compute_winner(method)
-# print(winner)
+sim.results()
