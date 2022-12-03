@@ -8,23 +8,26 @@ from scipy.spatial import distance_matrix
 class VoterModel(ABC):
 
     @abstractmethod
-    def generate_utilities(self, n_vot, n_cand):
+    def generate_util(self, n_vot, n_cand):
         pass
+
+    def __repr__(self):
+        return self.__class__.__name__
 
 
 class ImpartialCulture(VoterModel):
 
-    def generate_utilities(self, n_vot, n_cand):
+    def generate_util(self, n_vot, n_cand):
         return random_sample((n_vot, n_cand))
 
 
 class ClusteredSpatialModel(VoterModel):
 
-    def generate_utilities(self, n_vot, n_cand):
+    def generate_util(self, n_vot, n_cand):
         voters = self.generate_voters(n_vot)
         candidates = self.generate_candidates(voters, n_cand)
-        utilities = self.compute_utilities(voters, candidates)
-        return utilities
+        util = self.compute_util(voters, candidates)
+        return util
 
     def generate_voters(self, n_vot, n_dim=2):
         voters = np.empty((n_vot, n_dim))
@@ -49,9 +52,9 @@ class ClusteredSpatialModel(VoterModel):
         std = voters.std(axis=0)
         return 2*std*random_sample((n_cand, n_dim)) + mean - std
 
-    def compute_utilities(self, voters, candidates):
-        utilities = distance_matrix(voters, candidates)
-        return 1 - utilities/utilities.max()
+    def compute_util(self, voters, candidates):
+        util = distance_matrix(voters, candidates)
+        return 1 - util/util.max()
 
     @staticmethod
     def chinese_restaurant_process(n):
