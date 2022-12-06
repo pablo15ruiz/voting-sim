@@ -37,7 +37,7 @@ class VotingMethod(ABC):
 
         return ballots
 
-    def __repr__(self):
+    def __str__(self):
         m = f'{self.name} {self.behaviour}'
         if self.behaviour != 'honest':
             m += f' {int(100*self.p)}%'
@@ -64,6 +64,10 @@ class PluralityVotingMethod(VotingMethod):
         return ballots
 
 class OrdinalVotingMethod(VotingMethod):
+    '''
+    Convert `util` to `ballots`.
+    Return ranked ballot (first/worst to last/best) by arg.
+    '''
 
     def __init__(self, behaviour, p):
         super().__init__(behaviour, p)
@@ -149,17 +153,18 @@ class IRV(OrdinalVotingMethod):
     def compute_winner(self, ballots):
         n_vot, n_cand = ballots.shape
         cand = list(range(n_cand))
-        ctr = n_cand
-        while ctr > 1:
+        n_cand_temp = n_cand
+        while n_cand_temp > 1:
             count = np.bincount(ballots[:, -1], minlength=n_cand)
-            if any(count >= n_vot/2):
+            if count.max() > n_vot/2:
                 winner = count.argmax()
-            worst = np.bincount(ballots[:, -1], minlength=n_cand)[cand].argmin()
-            worst = cand[worst]
-            ctr -= 1
-            ballots = ballots[ballots != worst].reshape((n_vot, ctr))
+                break
+            worst = cand[count[cand].argmin()]
             cand.remove(worst)
-        winner = cand[0]
+            n_cand_temp -= 1
+            ballots = ballots[ballots != worst].reshape((n_vot, n_cand_temp))
+            if n_cand_temp == 1:
+                winner = cand[0]
 
         return winner
 
@@ -167,7 +172,6 @@ class Score(CardinalVotingMethod):
 
     def __init__(self, behaviour, p=1, max_score=5):
         super().__init__(behaviour, p, max_score)
-        self.max_score = max_score
         if max_score == 1:
             self.name = 'Approval'
 
@@ -181,7 +185,20 @@ class STAR(CardinalVotingMethod):
 
     def compute_winner(self, ballots):
         fr = ballots.sum(axis=0).argsort()[-2:]
-        ballots = ballots[:, ballots.sum(axis=0).argsort()[-2:]]
+        ballots = ballots[:, fr]
         ballots = ballots[ballots[:, 0] != ballots[:, 1]]
-        winner = fr[np.bincount(ballots.argmax(axis=1)).argmax()]
+        if not len(ballots):
+            winner = fr[0]
+        else:
+            winner = fr[np.bincount(ballots.argmax(axis=1)).argmax()]
+
         return winner
+
+#TODO
+class ThreeTwoOne(CardinalVotingMethod):
+
+    def __init__(self, behaviour, p=1, max_score=5):
+        super().__init__(behaviour, p, max_score)
+
+    def compute_winner(self, ballots):
+        return 0
