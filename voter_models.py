@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 from numpy.random import choice, normal, random_sample, shuffle
 from scipy.spatial import distance_matrix
+import random
 
 
 class VoterModel(ABC):
@@ -11,7 +12,7 @@ class VoterModel(ABC):
     def generate_util(self, n_vot, n_cand):
         pass
 
-    def __repr__(self):
+    def __str__(self):
         return self.__class__.__name__
 
 
@@ -21,15 +22,42 @@ class ImpartialCulture(VoterModel):
         return random_sample((n_vot, n_cand))
 
 
-class ClusteredSpatialModel(VoterModel):
+class NormalSpatialModel(VoterModel):
+
+    def __init__(self, n_dim=2):
+        self.n_dim = n_dim
 
     def generate_util(self, n_vot, n_cand):
-        voters = self.generate_voters(n_vot)
-        candidates = self.generate_candidates(voters, n_cand)
+        voters = self.generate_voters(n_vot, self.n_dim)
+        candidates = self.generate_candidates(voters, n_cand, self.n_dim)
         util = self.compute_util(voters, candidates)
         return util
 
-    def generate_voters(self, n_vot, n_dim=2):
+    def generate_voters(self, n_vot, n_dim):
+        return normal(0, 1, (n_vot, n_dim))
+
+    def generate_candidates(self, voters, n_cand, n_dim):
+        mean = voters.mean(axis=0)
+        std = voters.std(axis=0)
+        return 2*std*random_sample((n_cand, n_dim)) + mean - std
+
+    def compute_util(self, voters, candidates):
+        util = distance_matrix(voters, candidates)
+        return 1 - util/util.max()
+
+
+class ClusteredSpatialModel(VoterModel):
+
+    def __init__(self, n_dim=2):
+        self.n_dim = n_dim
+
+    def generate_util(self, n_vot, n_cand):
+        voters = self.generate_voters(n_vot, self.n_dim)
+        candidates = self.generate_candidates(voters, n_cand, self.n_dim)
+        util = self.compute_util(voters, candidates)
+        return util
+
+    def generate_voters(self, n_vot, n_dim):
         voters = np.empty((n_vot, n_dim))
         n_dim_per_view = self.chinese_restaurant_process(n_dim)
         views = np.repeat(range(len(n_dim_per_view)), n_dim_per_view)
@@ -47,7 +75,7 @@ class ClusteredSpatialModel(VoterModel):
 
         return voters
 
-    def generate_candidates(self, voters, n_cand, n_dim=2):
+    def generate_candidates(self, voters, n_cand, n_dim):
         mean = voters.mean(axis=0)
         std = voters.std(axis=0)
         return 2*std*random_sample((n_cand, n_dim)) + mean - std
