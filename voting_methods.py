@@ -100,7 +100,7 @@ class CardinalVotingMethod(VotingMethod):
     def __init__(self, behaviour, p, max_score):
         super().__init__(behaviour, p)
         self.max_score = max_score
-        self.name += str(max_score)
+        self.name += f'(0 to {max_score})'
 
     def compute_ballots_honest(self, util, poll=None):
         ballots = util - util.min(axis=1)[:, None]
@@ -112,9 +112,7 @@ class CardinalVotingMethod(VotingMethod):
     def compute_ballots_strategic(self, util, poll):
         fr = poll[-2:]
         pref = fr[util[:, fr].argmax(axis=1)]
-        temp = pref.copy()
-        temp[pref == fr[0]] = fr[1]
-        temp[pref == fr[1]] = fr[0]
+        temp = [fr[0] if x == fr[1] else fr[1] for x in pref]
         ballots = self.compute_ballots_honest(util)
         n_vot = util.shape[0]
         ballots[range(n_vot), pref] = self.max_score
@@ -194,11 +192,36 @@ class STAR(CardinalVotingMethod):
 
         return winner
 
-#TODO
 class ThreeTwoOne(CardinalVotingMethod):
+
+    def __init__(self, behaviour, p=1, max_score=2):
+        assert max_score == 2
+        super().__init__(behaviour, p, max_score)
+        self.name = '3-2-1'
+
+    def compute_winner(self, ballots):
+        semi = (ballots == self.max_score).sum(axis=0).argsort()[-3:]
+        final = semi[(ballots[:, semi] == 0).sum(axis=0).argsort()[:2]]
+        ballots = ballots[:, final]
+        ballots = ballots[ballots[:, 0] != ballots[:, 1]]
+        if not len(ballots):
+            winner = final[0]
+        else:
+            winner = final[np.bincount(ballots.argmax(axis=1)).argmax()]
+        return winner
+
+class MajorityJudgment(CardinalVotingMethod):
 
     def __init__(self, behaviour, p=1, max_score=5):
         super().__init__(behaviour, p, max_score)
 
     def compute_winner(self, ballots):
-        return 0
+        ballots = np.sort(ballots, axis=0)
+        tie = np.arange(ballots.shape[1])
+        for idx in reversed(range(int(len(ballots)/2))):
+            alpha = ballots[idx, tie]
+            tie = tie[np.flatnonzero(alpha == alpha.max())]
+            if len(tie) == 1:
+                break
+
+        return tie[0]
