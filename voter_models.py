@@ -22,44 +22,40 @@ class ImpartialCulture(VoterModel):
         return random_sample((n_vot, n_cand))
 
 
-class NormalSpatialModel(VoterModel):
+class SpatialModel(VoterModel):
 
     def __init__(self, n_dim=2):
         self.n_dim = n_dim
 
     def generate_util(self, n_vot, n_cand):
-        voters = self.generate_voters(n_vot, self.n_dim)
-        candidates = self.generate_candidates(voters, n_cand, self.n_dim)
+        voters = self.generate_voters(n_vot)
+        candidates = self.generate_candidates(n_cand, voters)
         util = self.compute_util(voters, candidates)
         return util
 
-    def generate_voters(self, n_vot, n_dim):
-        return normal(0, 1, (n_vot, n_dim))
-
-    def generate_candidates(self, voters, n_cand, n_dim):
+    def generate_candidates(self, n_cand, voters):
         mean = voters.mean(axis=0)
         std = voters.std(axis=0)
-        return 2*std*random_sample((n_cand, n_dim)) + mean - std
+        return 2*std*random_sample((n_cand, self.n_dim)) + mean - std
 
     def compute_util(self, voters, candidates):
         util = distance_matrix(voters, candidates)
-        return 1 - util/util.max()
-
-
-class ClusteredSpatialModel(VoterModel):
-
-    def __init__(self, n_dim=2):
-        self.n_dim = n_dim
-
-    def generate_util(self, n_vot, n_cand):
-        voters = self.generate_voters(n_vot, self.n_dim)
-        candidates = self.generate_candidates(voters, n_cand, self.n_dim)
-        util = self.compute_util(voters, candidates)
+        util = util.max() - util
+        util = util / util.max()
         return util
 
-    def generate_voters(self, n_vot, n_dim):
-        voters = np.empty((n_vot, n_dim))
-        n_dim_per_view = self.chinese_restaurant_process(n_dim)
+
+class NormalSpatialModel(SpatialModel):
+
+    def generate_voters(self, n_vot):
+        return normal(0, 1, (n_vot, self.n_dim))
+
+
+class ClusteredSpatialModel(SpatialModel):
+
+    def generate_voters(self, n_vot):
+        voters = np.empty((n_vot, self.n_dim))
+        n_dim_per_view = self.chinese_restaurant_process(self.n_dim)
         views = np.repeat(range(len(n_dim_per_view)), n_dim_per_view)
         shuffle(views)
         for view_idx, d in enumerate(n_dim_per_view):
@@ -75,26 +71,11 @@ class ClusteredSpatialModel(VoterModel):
 
         return voters
 
-    def generate_candidates(self, voters, n_cand, n_dim):
-        mean = voters.mean(axis=0)
-        std = voters.std(axis=0)
-        return 2*std*random_sample((n_cand, n_dim)) + mean - std
-
-    def compute_util(self, voters, candidates):
-        util = distance_matrix(voters, candidates)
-        return 1 - util/util.max()
-
     @staticmethod
     def chinese_restaurant_process(n):
-            n_tables = 1
-            tables = np.array([1, 0])
-            for customer in range(2, n+1):
-                p = tables/customer
-                p[-1] = 1/customer
-                table_choice = choice(n_tables+1, p=p)
-                tables[table_choice] += 1
-                if table_choice == n_tables:
-                    tables = np.append(tables, 0)
-                    n_tables += 1
-
-            return tables[:-1]
+        tables = []
+        while n:
+            c = np.random.randint(1, n+1)
+            tables.append(c)
+            n -= c
+        return tables
