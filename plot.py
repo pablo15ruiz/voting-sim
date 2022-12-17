@@ -30,7 +30,6 @@ def plot_vse_p(df, save=False):
     df = df[~df['meth'].isin(['FPTP', 'Borda', 'IRV'])]
     order = df.groupby('meth')['vse'].max().sort_values(ascending=False).keys()
 
-
     df.loc[df['beh'] == 'Honesto', 'p'] = 0
     df['p'] = df.apply(lambda x: f"{int(100*x['p'])}%", axis=1)
     df2 = df.copy(deep=True)
@@ -42,8 +41,8 @@ def plot_vse_p(df, save=False):
     # df = df[df['p'] <= 0.5]
     fig, (ax1, ax2) = plt.subplots(2, figsize=(10.5, 9))
     fig.subplots_adjust(hspace=0.35)
-    sns.pointplot(df, x='vse', y='meth', hue='p', linestyles='dotted', order=order, ax=ax1)
-    sns.pointplot(df2, x='vse', y='meth', hue='p', linestyles='dotted', order=order, ax=ax2)
+    sns.pointplot(df, x='vse', y='meth', hue='p', linestyles='dotted', order=order, scale=0.8, ax=ax1)
+    sns.pointplot(df2, x='vse', y='meth', hue='p', linestyles='dotted', order=order, scale=0.8, ax=ax2)
     ax1.set_xlabel('% Eficiencia de la Satisfacción de los Votantes (VSE)')
     ax1.set_ylabel(' ')
     ax2.set_xlabel('% Eficiencia de la Satisfacción de los Votantes (VSE)')
@@ -72,38 +71,84 @@ def plot_vse_p(df, save=False):
     else:
         plt.show()
 
-def plot_vse_cand(df, save=False):
-    df = df[~df['method'].isin(['FPTP', 'Borda', 'IRV'])]
-    df = df[df['n_vot'] == 1500]
-    # df = df[df['n_cand'] == 5]
-    # print(df)
-    df = df[df['behaviour'] == 'Honesto']
-    print(df)
-    fig, ax = plt.subplots(figsize=(15, 8))
-    # plt.xticks(np.arange(11)/10, [f'{int(v*10)}%' for v in range(11)])
-    # plt.yticks(np.arange(11)/10, [f'{int(v*10)}%' for v in range(11)])
-    sns.stripplot(df, x='vse', y='method', hue='n_cand', jitter=True, size=8, ax=ax)
-    plt.grid()
-    plt.show()
-
-def plot_vse_diff(df, save=False):
-    df = df[~df['method'].isin(['FPTP', 'Borda', 'IRV'])]
-    df = df[(df['n_vot'] == 1500) & (df['n_cand'] == 5) & (df['p'] == 1)]
-    data = pd.DataFrame(df['method'].unique(), columns=['method'])
-    data['diff'] = df[df['behaviour'] == 'Honesto']['vse'].to_numpy()
-    data['behaviour'] = 'Estratégico'
-    data['diff'] -= df[df['behaviour'] == 'Estratégico']['vse'].to_numpy()
-    data2 = pd.DataFrame(df['method'].unique(), columns=['method'])
-    data2['diff'] = df[df['behaviour'] == 'Honesto']['vse'].to_numpy()
-    data2['behaviour'] = 'Estratégico unilateral'
-    data2['diff'] -= df[df['behaviour'] == 'Estratégico unilateral']['vse'].to_numpy()
-    data = pd.concat([data, data2])
+def plot_vse_cand_honest(df, save=False):
+    df = df[~df['meth'].isin(['FPTP', 'Borda', 'IRV'])]
+    df = df.query('vot == 1500 & p == 1')
+    df = df[df['beh'] == 'Honesto']
+    hue_order = ['Smith/Rango', 'STAR', 'Rango', '3-2-1', 'MJ', 'Aprobatorio']
 
     fig, ax = plt.subplots(figsize=(10.5, 5))
-    sns.stripplot(data, x='diff', y='method', hue='behaviour', jitter=False, size=8, ax=ax)
+    sns.pointplot(df, x='cand', y='vse', hue='meth', scale=0.8, linestyles='dotted', hue_order=hue_order)
+    plt.xlabel('Candidatos')
+    plt.ylabel('% VSE')
+    ticks = np.arange(0.97, 0.996, 0.005)
+    labels = ['97%', '97,5%', '98%', '98,5%', '99%', '99,5%']
+    plt.yticks(ticks, labels)
     plt.grid()
-    plt.axvline(ls='--')
-    plt.show()
+    pos = ax.get_position()
+    ax.set_position([pos.x0, pos.y0, pos.width * 0.9, pos.height])
+    ax.legend(loc='center right', bbox_to_anchor=(1.22, 0.5))
+    plt.title('100% honesto')
+
+    if save:
+        plt.savefig('Plots/vse_cand_honest.png')
+        plt.savefig('Plots/vse_cand_honest_hd.png', dpi=300)
+    else:
+        plt.show()
+
+def plot_vse_cand_strat(df, save=False):
+    df = df[~df['meth'].isin(['FPTP', 'Borda', 'IRV'])]
+    df = df.query('vot == 1500 & p == 1')
+    df = df[df['beh'] == 'Estratégico']
+    hue_order = ['Smith/Rango', 'STAR', 'Rango', '3-2-1', 'MJ', 'Aprobatorio']
+
+    fig, ax = plt.subplots(figsize=(10.5, 5))
+    sns.pointplot(df, x='cand', y='vse', hue='meth', scale=0.8, linestyles='dotted', hue_order=hue_order)
+    plt.xlabel('Candidatos')
+    plt.ylabel('% VSE')
+    ticks = np.arange(0.86, 0.98, 0.02)
+    plt.yticks(ticks, [f'{int(100*v)}%' for v in ticks])
+    plt.grid()
+    pos = ax.get_position()
+    ax.set_position([pos.x0, pos.y0, pos.width * 0.9, pos.height])
+    ax.legend(loc='center right', bbox_to_anchor=(1.22, 0.5))
+    plt.title('100% estratégico')
+
+    if save:
+        plt.savefig('Plots/vse_cand_strat.png')
+        plt.savefig('Plots/vse_cand_strat_hd.png', dpi=300)
+    else:
+        plt.show()
+
+def plot_vse_diff(df, save=False):
+    df = df[~df['meth'].isin(['FPTP', 'Borda', 'IRV'])]
+    df = df[(df['vot'] == 1500) & (df['cand'] == 5) & (df['p'] == 1)]
+    data = pd.DataFrame(df['meth'].unique(), columns=['meth'])
+    data['diff'] = df[df['beh'] == 'Honesto']['vse'].to_numpy()
+    data['beh'] = 'Estratégico'
+    data['diff'] -= df[df['beh'] == 'Estratégico']['vse'].to_numpy()
+    data2 = pd.DataFrame(df['meth'].unique(), columns=['meth'])
+    data2['diff'] = df[df['beh'] == 'Honesto']['vse'].to_numpy()
+    data2['beh'] = 'Estratégico unilateral'
+    data2['diff'] -= df[df['beh'] == 'Estratégico unilateral']['vse'].to_numpy()
+    data = pd.concat([data, data2])
+    data.rename(columns={'beh': 'Comportamiento'}, inplace=True)
+
+    order = ['Smith/Rango', 'STAR', 'Rango', '3-2-1', 'MJ', 'Aprobatorio']
+    fig, ax = plt.subplots(figsize=(10.5, 5))
+    sns.stripplot(data, x='diff', y='meth', hue='Comportamiento', jitter=False, size=8, ax=ax, order=order)
+    plt.grid()
+    ticks = np.arange(0.05, 0.4, 0.05)
+    plt.xscale('logit')
+    plt.xticks(ticks, [f'{int(100*v)}%' for v in ticks])
+    plt.xlabel('% Pérdida de VSE respecto 100% honesto')
+    plt.ylabel(' ')
+
+    if save:
+        plt.savefig('Plots/vse_diff.png')
+        plt.savefig('Plots/vse_diff_hd.png', dpi=300)
+    else:
+        plt.show()
 
 def filter_df(df):
     df.loc[df['beh'] == 'honest', 'beh'] = 'Honesto'
@@ -124,8 +169,8 @@ def filter_df(df):
 
 df = filter_df(pd.read_csv('vse.csv'))
 
-# plot_vse(df.copy(deep=True))
-plot_vse_p(df.copy(deep=True), save=True)
-# plot_vse_vot(df.copy(deep=True))
-# plot_vse_cand(df.copy(deep=True))
-# plot_vse_diff(df.copy(deep=True))
+plot_vse(df.copy(deep=True))
+plot_vse_p(df.copy(deep=True))
+plot_vse_cand_honest(df.copy(deep=True))
+plot_vse_cand_strat(df.copy(deep=True))
+plot_vse_diff(df.copy(deep=True))
