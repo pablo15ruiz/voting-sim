@@ -100,7 +100,7 @@ class CardinalVotingMethod(VotingMethod):
     def __init__(self, behaviour, p, max_score):
         super().__init__(behaviour, p)
         self.max_score = max_score
-        self.name += f'(0 to {max_score})'
+        self.name += f'({max_score})'
 
     def compute_ballots_honest(self, util, poll=None):
         ballots = util - util.min(axis=1)[:, None]
@@ -225,3 +225,14 @@ class MajorityJudgment(CardinalVotingMethod):
                 break
 
         return tie[0]
+
+class SmithScore(CardinalVotingMethod):
+
+    def __init__(self, behaviour, p=1, max_score=5):
+        super().__init__(behaviour, p, max_score)
+
+    def compute_winner(self, ballots):
+        smith = (ballots[:, None] < ballots[:, :, None]).sum(axis=0)
+        smith = ((smith - smith.T) >= 0).sum(axis=1)
+        smith = np.flatnonzero(smith == smith.max())
+        return smith[ballots[:, smith].sum(axis=0).argmax()]
