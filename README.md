@@ -1,5 +1,7 @@
 # Computer Simulation of Cardinal Electoral Systems
 
+Check ``test.py``.
+
 ### Voter models (utility generators)
 - Impartial culture
 - Normal spatial model
