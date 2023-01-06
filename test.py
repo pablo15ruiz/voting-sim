@@ -3,16 +3,7 @@ from voter_models import *
 from voting_methods import *
 
 import numpy as np
-import profile
 
-np.random.seed(1)
-
-n_vot = 300
-n_cand = 6
-n_iter = 300
-
-voter_model = ClusteredSpatialModel()
-voter_model = ImpartialCulture()
 methods = [
     FPTP('honest'),
     FPTP('strategic'),
@@ -46,7 +37,13 @@ methods = [
     STAR('strategic1s', p=0.5)
 ]
 
+np.random.seed(1)
+
+n_vot = 300
+n_cand = 6
+n_iter = 300
+voter_model = ClusteredSpatialModel(n_dim=4)
+
 sim = Simulation(n_vot, n_cand, n_iter, methods, voter_model)
 sim.simulate()
 sim.results()
-# sim.to_csv()
