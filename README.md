@@ -21,6 +21,6 @@
 - Strategic
 - One-sided strategic
 
-### Métrics
+### Metrics
 - Condorcet cycle frequency
 - Voter Satisfaction Efficiency (VSE)
