@@ -20,10 +20,7 @@ class Simulation:
         n_cycles = 0
         winners = []
         util_sum = []
-        # control = list(range(int(self.n_iter/10), self.n_iter+1, int(self.n_iter/10)))
         for _ in range(self.n_iter):
-            # if _ in control:
-            #     print(f'{_}/{self.n_iter}')
             util = self.voter_model.generate_util(self.n_vot, self.n_cand)
             util_sum.append(util.sum(axis=0))
             n_cycles += self.compute_cycle(util)
