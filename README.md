@@ -1,4 +1,4 @@
-# Computer Simulation of Cardinal Electoral Systems
+# Computer Simulation of Electoral Systems
 
 ### Voter models (utility generators)
 - Impartial culture
@@ -26,4 +26,4 @@
 - Voter Satisfaction Efficiency (VSE)
 
 ### Test
-Check ``test.py``
+- Check ``test.py``
