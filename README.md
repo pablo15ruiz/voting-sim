@@ -1,6 +1,6 @@
 # Computer Simulation of Cardinal Electoral Systems
 
-### Voter models (utility generatos)
+### Voter models (utility generators)
 - Impartial culture
 - Normal spatial model
 - Clustered spatial model
@@ -20,3 +20,7 @@
 - Honest
 - Strategic
 - One-sided strategic
+
+### Métrics
+- Condorcet cycle frequency
+- Voter Satisfaction Efficiency (VSE)
